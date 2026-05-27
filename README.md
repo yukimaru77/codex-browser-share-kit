@@ -4,10 +4,26 @@ This repository packages the local glue needed to make Codex Browser/Chrome inte
 
 The kit assumes the recipient has:
 
+- macOS. The installer scripts in this repository currently target macOS.
 - Codex.app installed in `/Applications/Codex.app`
+- Codex CLI on the same machine, using the same Codex app resources/plugins
 - Google Chrome installed
 - The Codex Chrome extension installed in the Chrome profile they use
 - Node.js 18 or newer
+- `~/.local/bin` on `PATH` if they want to use the generated CLI wrapper directly
+
+## Can This Install `@browser` Into Codex CLI?
+
+It can make `@browser` usable from CLI-side Codex **when the OpenAI bundled Browser/Chrome plugins are already present on that machine through Codex.app**.
+
+This repository does not install or redistribute the actual `@browser` plugin. It only installs the local support pieces that made the CLI setup work on the original machine:
+
+- Chrome Native Messaging manifest
+- local Chrome window helper
+- `codex-node-repl-chrome` wrapper with the correct local trusted `browser-client.mjs` hash
+- diagnostics for the Codex.app plugins and Chrome extension
+
+If a recipient's Codex CLI does not expose plugin support, does not include the Browser/Chrome bundled plugins, or is not paired with Codex.app resources, this kit cannot add `@browser` by itself.
 
 ## Why This Exists
 
