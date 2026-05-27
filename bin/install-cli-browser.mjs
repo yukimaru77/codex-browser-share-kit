@@ -21,6 +21,8 @@ const codexHome = process.env.CODEX_HOME || path.join(home, ".codex");
 const configPath = path.join(codexHome, "config.toml");
 const bundledMarketplaceRoot = path.join(codexHome, ".tmp", "bundled-marketplaces", "openai-bundled");
 const wrapperPath = path.join(codexHome, "bin", "node_repl_chrome_native_wrapper");
+const pipeProxyPath = path.join(codexHome, "bin", "codex_browser_pipe_proxy.mjs");
+const pipeProxySocket = "/tmp/codex-browser-use/codex-browser-share-kit-extension.sock";
 
 function quote(value) {
   return JSON.stringify(value);
@@ -59,8 +61,21 @@ function upsertTomlKey(content, table, key, value) {
     return before + body.replace(keyRe, `$1${line}`) + after;
   }
 
-  const bodyPrefix = body.startsWith("\n") ? "" : "\n";
-  return `${before}${bodyPrefix}${line}${body}${after}`;
+  const bodySuffix = body.startsWith("\n") ? body : `\n${body}`;
+  return `${before}\n${line}${bodySuffix}${after}`;
+}
+
+function removeTomlTable(content, table) {
+  const header = `[${table}]`;
+  const headerRe = new RegExp(`^${escapeRegex(header)}\\s*$`, "m");
+  const match = headerRe.exec(content);
+  if (!match) return content;
+
+  const nextHeaderRe = /^\[[^\]]+\]\s*$/gm;
+  nextHeaderRe.lastIndex = match.index + match[0].length;
+  const next = nextHeaderRe.exec(content);
+  const end = next ? next.index : content.length;
+  return `${content.slice(0, match.index)}${content.slice(end)}`;
 }
 
 async function writeNodeReplWrapper() {
@@ -72,6 +87,7 @@ async function writeNodeReplWrapper() {
   const tmpBrowserScripts = path.join(bundledMarketplaceRoot, "plugins", "browser", "scripts");
   const tmpChromeScripts = path.join(bundledMarketplaceRoot, "plugins", "chrome", "scripts");
   const trustedPaths = [browserScripts, chromeScripts, tmpBrowserScripts, tmpChromeScripts].join(":");
+  const proxySource = path.join(repoRoot, "helpers", "browser-helper", "pipe-proxy.mjs");
 
   const body = `#!/usr/bin/env bash
 set -euo pipefail
@@ -88,38 +104,30 @@ export NODE_REPL_BROWSER_CLIENT_MARKETPLACE_NAME="\${NODE_REPL_BROWSER_CLIENT_MA
 export NODE_REPL_NATIVE_PIPE_CONNECT_TIMEOUT_MS="\${NODE_REPL_NATIVE_PIPE_CONNECT_TIMEOUT_MS:-15000}"
 export NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S="\${NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S:-${browserHash},${chromeHash}}"
 export NODE_REPL_TRUSTED_CODE_PATHS="\${NODE_REPL_TRUSTED_CODE_PATHS:-${trustedPaths}}"
+export CODEX_BROWSER_USE_PIPE_PATHS="${pipeProxySocket}"
 
 log() {
   printf '%s %s\\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$*" >>"$log_file" 2>/dev/null || true
 }
 
-detect_chrome_extension_pipes() {
-  local pids paths pid
-  pids="$(pgrep -f '/chrome/.*/extension-host chrome-extension://hehggadaopoacecdllhhajmbjkdcmajg/' 2>/dev/null || true)"
-  [[ -n "$pids" ]] || return 0
-
-  paths=""
-  for pid in $pids; do
-    while IFS= read -r path; do
-      [[ -n "$path" ]] || continue
-      case ":$paths:" in
-        *":$path:"*) ;;
-        *) paths="\${paths:+$paths:}$path" ;;
-      esac
-    done < <(lsof -nU -p "$pid" 2>/dev/null | awk '$1 == "extension" && /\\/tmp\\/codex-browser-use\\/.*\\.sock$/ {print $NF}')
+start_chrome_extension_pipe_proxy() {
+  mkdir -p /tmp/codex-browser-use 2>/dev/null || true
+  "$NODE_REPL_NODE_PATH" "${pipeProxyPath}" >>"\${CODEX_HOME:-$HOME/.codex}/chrome_pipe_proxy.log" 2>&1 &
+  local i
+  for i in {1..50}; do
+    [[ -S "${pipeProxySocket}" ]] && break
+    sleep 0.1
   done
-
-  [[ -n "$paths" ]] || return 0
-  export CODEX_BROWSER_USE_PIPE_PATHS="$paths"
-  printf '%s' "$paths" >"\${CODEX_HOME:-$HOME/.codex}/chrome_extension_pipes" 2>/dev/null || true
-  log "using chrome extension pipe paths=$paths"
+  printf '%s' "${pipeProxySocket}" >"\${CODEX_HOME:-$HOME/.codex}/chrome_extension_pipes" 2>/dev/null || true
+  log "using chrome extension pipe proxy=${pipeProxySocket}"
 }
 
-detect_chrome_extension_pipes
-exec "$real_node_repl" "$@"
+start_chrome_extension_pipe_proxy
+exec "$real_node_repl" --disable-sandbox "$@"
 `;
 
   await mkdir(path.dirname(wrapperPath), { recursive: true });
+  await writeFile(pipeProxyPath, await readFile(proxySource, "utf8"), { mode: 0o755 });
   await writeFile(wrapperPath, body, { mode: 0o755 });
 }
 
@@ -179,6 +187,8 @@ async function updateCodexConfig() {
     console.log(`Backed up ${configPath} to ${backup}`);
   }
 
+  content = removeTomlTable(content, 'plugins."browser@openai-bundled"');
+
   const writes = [
     ["marketplaces.codex-browser-share-kit", "last_updated", quote(new Date().toISOString())],
     ["marketplaces.codex-browser-share-kit", "source_type", quote("local")],
@@ -187,7 +197,6 @@ async function updateCodexConfig() {
     ["marketplaces.openai-bundled", "source_type", quote("local")],
     ["marketplaces.openai-bundled", "source", quote(bundledMarketplaceRoot)],
     ['plugins."browser@codex-browser-share-kit"', "enabled", "true"],
-    ['plugins."browser@openai-bundled"', "enabled", "true"],
     ['plugins."chrome@openai-bundled"', "enabled", "true"],
     ["features", "plugins", "true"],
     ["features", "browser_use", "true"],
@@ -213,6 +222,7 @@ async function updateCodexConfig() {
     ["mcp_servers.node_repl.env", "NODE_REPL_NODE_PATH", quote(path.join(resources, "node"))],
     ["mcp_servers.node_repl.env", "NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S", quote(`${browserHash},${chromeHash}`)],
     ["mcp_servers.node_repl.env", "NODE_REPL_TRUSTED_CODE_PATHS", quote(trustedPaths)],
+    ["mcp_servers.node_repl.env", "CODEX_BROWSER_USE_PIPE_PATHS", quote(pipeProxySocket)],
   ];
 
   for (const [table, key, value] of writes) {
@@ -249,6 +259,7 @@ async function main() {
   console.log(`Installed CLI Browser marketplace from ${repoRoot}`);
   console.log(`Wrote bundled marketplace links at ${bundledMarketplaceRoot}`);
   console.log(`Wrote Node REPL wrapper at ${wrapperPath}`);
+  console.log(`Wrote Chrome pipe proxy at ${pipeProxyPath}`);
   console.log(`Updated ${configPath}`);
   console.log("Restart Codex CLI before testing @browser.");
 }

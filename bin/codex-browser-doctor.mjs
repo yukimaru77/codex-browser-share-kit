@@ -102,13 +102,13 @@ async function cliConfigStatus() {
     "[marketplaces.codex-browser-share-kit]",
     "[marketplaces.openai-bundled]",
     "[plugins.\"browser@codex-browser-share-kit\"]",
-    "[plugins.\"browser@openai-bundled\"]",
     "[plugins.\"chrome@openai-bundled\"]",
     "[features]",
     "browser_use = true",
     "js_repl = true",
     "[mcp_servers.node_repl]",
     "[mcp_servers.node_repl.env]",
+    "CODEX_BROWSER_USE_PIPE_PATHS",
     "NODE_REPL_TRUSTED_CODE_PATHS",
   ];
   const missing = required.filter((needle) => !config.includes(needle));
@@ -171,6 +171,10 @@ async function main() {
   const mcpWrapper = path.join(home, ".codex", "bin", "node_repl_chrome_native_wrapper");
   if (await exists(mcpWrapper)) pass("Codex CLI MCP wrapper", mcpWrapper);
   else warn("Codex CLI MCP wrapper", `run: node ./bin/install-cli-browser.mjs`);
+
+  const pipeProxy = path.join(home, ".codex", "bin", "codex_browser_pipe_proxy.mjs");
+  if (await exists(pipeProxy)) pass("Chrome pipe proxy", pipeProxy);
+  else warn("Chrome pipe proxy", `run: node ./bin/install-cli-browser.mjs`);
 
   const cli = await cliConfigStatus();
   if (!cli.exists) {

@@ -8,6 +8,7 @@
     "codex-browser-install-cli": "./bin/install-cli-browser.mjs",
     "codex-browser-install-helper": "./bin/install-local-helper.mjs",
     "codex-browser-repair-native-host": "./bin/repair-native-host.mjs",
+    "codex-browser-setup": "./bin/setup.mjs",
     "codex-browser-write-wrapper": "./bin/write-node-repl-wrapper.mjs"
   },
   "scripts": {
@@ -15,6 +16,7 @@
     "install-cli": "node ./bin/install-cli-browser.mjs",
     "install-helper": "node ./bin/install-local-helper.mjs",
     "repair-native-host": "node ./bin/repair-native-host.mjs",
+    "setup": "node ./bin/setup.mjs",
     "write-wrapper": "node ./bin/write-node-repl-wrapper.mjs"
   },
   "license": "MIT",

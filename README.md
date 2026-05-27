@@ -10,17 +10,18 @@ The kit assumes the recipient has:
 - Google Chrome installed
 - The Codex Chrome extension installed in the Chrome profile they use
 - Node.js 18 or newer
-- `~/.local/bin` on `PATH` if they want to use the generated CLI wrapper directly
 
 ## Can This Install `@browser` Into Codex CLI?
 
 It can make `@browser` usable from CLI-side Codex **when the OpenAI bundled Browser/Chrome plugins are already present on that machine through Codex.app**.
 
-This repository does not install or redistribute the actual `@browser` plugin. It only installs the local support pieces that made the CLI setup work on the original machine:
+This repository does not install or redistribute OpenAI's proprietary Browser/Chrome binaries. It installs a local `browser@codex-browser-share-kit` shim plus the support pieces that connect Codex CLI to the Browser/Chrome resources already present in Codex.app:
 
 - Chrome Native Messaging manifest
 - local Chrome window helper
-- `codex-node-repl-chrome` wrapper with the correct local trusted `browser-client.mjs` hash
+- Codex CLI `node_repl` MCP wrapper with the correct local trusted Browser/Chrome client hashes
+- Chrome extension socket proxy for CLI sessions
+- local plugin marketplace/config entries
 - diagnostics for the Codex.app plugins and Chrome extension
 
 If a recipient's Codex CLI does not expose plugin support, does not include the Browser/Chrome bundled plugins, or is not paired with Codex.app resources, this kit cannot add `@browser` by itself.
@@ -36,24 +37,28 @@ The working local setup uses several moving parts:
 - A small local helper service for creating Chrome windows from automation
 - An optional `codex-node-repl-chrome` wrapper that enables the Chrome backend for CLI-side use
 
-Only the helper, diagnostics, and local config repair scripts are included here. Proprietary files stay on each user's machine as part of their own Codex.app / Chrome installation.
+Only the shim, helper, diagnostics, and local config repair scripts are included here. Proprietary files stay on each user's machine as part of their own Codex.app / Chrome installation.
 
 ## Quick Start
+
+1. Install or enable the Codex Chrome extension in the Chrome profile you use.
+2. Clone this repository and run setup:
 
 ```bash
 git clone <this-repo-url>
 cd codex-browser-share-kit
-
-node ./bin/codex-browser-doctor.mjs
-node ./bin/install-cli-browser.mjs
-node ./bin/repair-native-host.mjs
-node ./bin/install-local-helper.mjs
-node ./bin/codex-browser-doctor.mjs
+node ./bin/setup.mjs
 ```
 
-If the doctor reports that the Codex Chrome extension is missing or disabled, install or enable it from Codex/Chrome first. This repository cannot ship that extension.
+If the setup doctor reports that the Codex Chrome extension is missing or disabled, install or enable it from Codex/Chrome first, then run `node ./bin/setup.mjs` again. This repository cannot ship that extension.
 
-Restart Codex CLI after running `install-cli-browser.mjs`. Existing CLI sessions do not reload plugin, marketplace, feature, or MCP server config.
+Restart Codex CLI after setup. Existing CLI sessions do not reload plugin, marketplace, feature, or MCP server config.
+
+Optional safe browser prompt config:
+
+```bash
+node ./bin/setup.mjs --write-browser-config
+```
 
 ## What Gets Installed
 
@@ -67,6 +72,7 @@ The helper listens only on `127.0.0.1:48211` and exposes:
 
 - `GET /health`
 - `POST /chrome/new-window`
+- `POST /chrome/open-url`
 
 `repair-native-host.mjs` writes or repairs:
 
@@ -76,7 +82,7 @@ It points at the native host binary already installed inside Codex.app:
 
 - `/Applications/Codex.app/Contents/Resources/plugins/openai-bundled/plugins/chrome/extension-host/macos/arm64/extension-host`
 
-`write-node-repl-wrapper.mjs` writes:
+`write-node-repl-wrapper.mjs` writes a standalone wrapper:
 
 - `~/.local/bin/codex-node-repl-chrome`
 
@@ -86,12 +92,22 @@ It computes the trusted Browser client SHA from the recipient's local Codex.app 
 
 - this repository as a local marketplace: `[marketplaces.codex-browser-share-kit]`
 - a local OpenAI bundled marketplace shim in `~/.codex/.tmp/bundled-marketplaces/openai-bundled`
-- `browser@codex-browser-share-kit`, `browser@openai-bundled`, and `chrome@openai-bundled` plugin enablement
+- `browser@codex-browser-share-kit` and `chrome@openai-bundled` plugin enablement
 - `features.plugins`, `features.browser_use`, `features.in_app_browser`, and `features.js_repl`
 - the `mcp_servers.node_repl` entry needed by the `@browser` skill
 - `~/.codex/bin/node_repl_chrome_native_wrapper`
+- `~/.codex/bin/codex_browser_pipe_proxy.mjs`
 
 It backs up `~/.codex/config.toml` before changing it.
+
+`setup.mjs` runs the required installers in order:
+
+- `install-cli-browser.mjs`
+- `repair-native-host.mjs`
+- `install-local-helper.mjs`
+- `codex plugin remove/add browser@codex-browser-share-kit` to refresh the local skill cache
+- `codex plugin add chrome@openai-bundled` as a best-effort install
+- `codex-browser-doctor.mjs`
 
 ## Optional Browser Config
 
@@ -137,6 +153,6 @@ Most failures are one of:
 - Chrome extension is not installed in the active Chrome profile
 - Native Messaging manifest points to an old Codex.app path
 - Local helper LaunchAgent is not loaded
-- `~/.local/bin` is not on `PATH`
+- Codex CLI was not restarted after setup
 
 See [docs/troubleshooting.md](docs/troubleshooting.md).
