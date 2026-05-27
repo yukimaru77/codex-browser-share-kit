@@ -1,0 +1,5 @@
+# Conservative default. Codex/browser should ask before sensitive browser actions.
+approval_mode = "ask"
+history_approval_mode = "ask"
+download_approval_mode = "ask"
+upload_approval_mode = "ask"

@@ -1,0 +1,6 @@
+# Opt-in only. Matches the original local setup, but removes browser approval prompts.
+# Use only on a trusted development machine.
+approval_mode = "never_ask"
+history_approval_mode = "never_ask"
+download_approval_mode = "never_ask"
+upload_approval_mode = "never_ask"
