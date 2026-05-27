@@ -12,6 +12,7 @@ import {
   extensionHostPath,
   helperPlistPath,
   helperServerPath,
+  home,
   nativeHostManifestPath,
   nativeHostName,
   nodeReplPath,
@@ -90,6 +91,30 @@ async function helperHealth() {
   }
 }
 
+async function cliConfigStatus() {
+  const configPath = path.join(home, ".codex", "config.toml");
+  if (!(await exists(configPath))) {
+    return { configPath, exists: false, missing: ["config.toml"] };
+  }
+
+  const config = await readFile(configPath, "utf8");
+  const required = [
+    "[marketplaces.codex-browser-share-kit]",
+    "[marketplaces.openai-bundled]",
+    "[plugins.\"browser@codex-browser-share-kit\"]",
+    "[plugins.\"browser@openai-bundled\"]",
+    "[plugins.\"chrome@openai-bundled\"]",
+    "[features]",
+    "browser_use = true",
+    "js_repl = true",
+    "[mcp_servers.node_repl]",
+    "[mcp_servers.node_repl.env]",
+    "NODE_REPL_TRUSTED_CODE_PATHS",
+  ];
+  const missing = required.filter((needle) => !config.includes(needle));
+  return { configPath, exists: true, missing };
+}
+
 async function main() {
   if (await exists(defaultCodexApp)) pass("Codex.app", defaultCodexApp);
   else fail("Codex.app", `${defaultCodexApp} not found; set CODEX_APP if installed elsewhere`);
@@ -142,6 +167,19 @@ async function main() {
 
   if (await exists(wrapperPath())) pass("CLI wrapper", wrapperPath());
   else warn("CLI wrapper", `run: node ./bin/write-node-repl-wrapper.mjs`);
+
+  const mcpWrapper = path.join(home, ".codex", "bin", "node_repl_chrome_native_wrapper");
+  if (await exists(mcpWrapper)) pass("Codex CLI MCP wrapper", mcpWrapper);
+  else warn("Codex CLI MCP wrapper", `run: node ./bin/install-cli-browser.mjs`);
+
+  const cli = await cliConfigStatus();
+  if (!cli.exists) {
+    warn("Codex CLI browser config", `run: node ./bin/install-cli-browser.mjs`);
+  } else if (cli.missing.length === 0) {
+    pass("Codex CLI browser config", cli.configPath);
+  } else {
+    warn("Codex CLI browser config", `missing ${cli.missing.join(", ")}; run: node ./bin/install-cli-browser.mjs`);
+  }
 
   for (const [status, label, detail] of rows) {
     console.log(`${status.padEnd(4)} ${label}${detail ? ` - ${detail}` : ""}`);

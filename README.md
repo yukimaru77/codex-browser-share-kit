@@ -45,13 +45,15 @@ git clone <this-repo-url>
 cd codex-browser-share-kit
 
 node ./bin/codex-browser-doctor.mjs
+node ./bin/install-cli-browser.mjs
 node ./bin/repair-native-host.mjs
 node ./bin/install-local-helper.mjs
-node ./bin/write-node-repl-wrapper.mjs
 node ./bin/codex-browser-doctor.mjs
 ```
 
 If the doctor reports that the Codex Chrome extension is missing or disabled, install or enable it from Codex/Chrome first. This repository cannot ship that extension.
+
+Restart Codex CLI after running `install-cli-browser.mjs`. Existing CLI sessions do not reload plugin, marketplace, feature, or MCP server config.
 
 ## What Gets Installed
 
@@ -79,6 +81,17 @@ It points at the native host binary already installed inside Codex.app:
 - `~/.local/bin/codex-node-repl-chrome`
 
 It computes the trusted Browser client SHA from the recipient's local Codex.app instead of hard-coding your machine's hash.
+
+`install-cli-browser.mjs` writes or updates:
+
+- this repository as a local marketplace: `[marketplaces.codex-browser-share-kit]`
+- a local OpenAI bundled marketplace shim in `~/.codex/.tmp/bundled-marketplaces/openai-bundled`
+- `browser@codex-browser-share-kit`, `browser@openai-bundled`, and `chrome@openai-bundled` plugin enablement
+- `features.plugins`, `features.browser_use`, `features.in_app_browser`, and `features.js_repl`
+- the `mcp_servers.node_repl` entry needed by the `@browser` skill
+- `~/.codex/bin/node_repl_chrome_native_wrapper`
+
+It backs up `~/.codex/config.toml` before changing it.
 
 ## Optional Browser Config
 

@@ -1,0 +1,36 @@
+{
+  "name": "browser",
+  "version": "0.1.0",
+  "description": "CLI-facing Browser plugin shim for Codex. Uses local Codex.app Browser/Chrome resources and does not redistribute OpenAI plugin binaries.",
+  "author": {
+    "name": "Codex Browser Share Kit contributors"
+  },
+  "license": "MIT",
+  "keywords": [
+    "browser",
+    "chrome",
+    "codex",
+    "cli"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Browser",
+    "shortDescription": "Use Codex.app Browser/Chrome resources from Codex CLI",
+    "longDescription": "A lightweight CLI shim that makes the @browser workflow available when Codex.app and the Codex Chrome extension are already installed locally.",
+    "developerName": "Codex Browser Share Kit contributors",
+    "category": "Engineering",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/yukimaru77/codex-browser-share-kit",
+    "privacyPolicyURL": "https://github.com/yukimaru77/codex-browser-share-kit",
+    "termsOfServiceURL": "https://github.com/yukimaru77/codex-browser-share-kit",
+    "defaultPrompt": [
+      "Open localhost:3000"
+    ],
+    "brandColor": "#2F6FED",
+    "screenshots": []
+  }
+}

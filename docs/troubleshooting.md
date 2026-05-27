@@ -49,7 +49,18 @@ curl http://127.0.0.1:48211/health
 Create it:
 
 ```bash
-node ./bin/write-node-repl-wrapper.mjs
+node ./bin/install-cli-browser.mjs
 ```
 
-Make sure `~/.local/bin` is on `PATH`.
+Restart Codex CLI afterwards. Existing CLI sessions do not reload MCP server or plugin config.
+
+## `@browser` Does Not Appear In CLI
+
+Run:
+
+```bash
+node ./bin/install-cli-browser.mjs
+node ./bin/codex-browser-doctor.mjs
+```
+
+Then restart Codex CLI. The repository must be registered as a local marketplace and `browser@codex-browser-share-kit` must be enabled in `~/.codex/config.toml`.

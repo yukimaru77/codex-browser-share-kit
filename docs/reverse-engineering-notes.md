@@ -18,11 +18,18 @@ These notes describe the local integration points that were observed. They are i
   - manifest path: `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/com.openai.codexextension.json`
   - host binary path inside Codex.app: `.../plugins/chrome/extension-host/macos/arm64/extension-host`
 - Node REPL wrapper:
-  - wrapper path: `~/.local/bin/codex-node-repl-chrome`
+  - simple wrapper path: `~/.local/bin/codex-node-repl-chrome`
+  - CLI MCP wrapper path: `~/.codex/bin/node_repl_chrome_native_wrapper`
   - important env:
     - `NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S`
+    - `NODE_REPL_TRUSTED_CODE_PATHS`
     - `NODE_REPL_REQUEST_META`
     - `BROWSER_USE_DISABLE_AMBIENT_NETWORK=1`
+- CLI config:
+  - local marketplace for this repo: `codex-browser-share-kit`
+  - local marketplace shim for bundled plugin resources: `openai-bundled`
+  - enabled plugins: `browser@codex-browser-share-kit`, `browser@openai-bundled`, `chrome@openai-bundled`
+  - MCP server: `mcp_servers.node_repl`
 
 ## Packaging Decision
 
